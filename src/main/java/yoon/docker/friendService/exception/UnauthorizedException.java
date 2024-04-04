@@ -2,8 +2,7 @@ package yoon.docker.friendService.exception;
 
 import org.springframework.http.HttpStatus;
 
-public class FriendException extends RuntimeException{
-
+public class UnauthorizedException extends RuntimeException{
     private final String message;
 
     private final HttpStatus status;
@@ -16,9 +15,8 @@ public class FriendException extends RuntimeException{
         return this.status;
     }
 
-    public FriendException(String message, HttpStatus status){
+    public UnauthorizedException(String message, HttpStatus status){
         this.message = message;
         this.status = status;
     }
-
 }

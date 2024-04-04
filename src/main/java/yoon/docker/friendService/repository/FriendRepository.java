@@ -5,6 +5,8 @@ import org.springframework.stereotype.Repository;
 import yoon.docker.friendService.entity.Friend;
 import yoon.docker.friendService.entity.Members;
 
+import java.util.List;
+
 @Repository
 public interface FriendRepository extends JpaRepository<Friend, Long> {
 
@@ -14,4 +16,6 @@ public interface FriendRepository extends JpaRepository<Friend, Long> {
 
     Friend findFriendsByFriendIdx(long idx);
 
+    List<Friend> findFriendsByToUser(long idx);
+    List<Friend> findFriendsByFromUserAndIsFriend(Members members, boolean isFriend);
 }

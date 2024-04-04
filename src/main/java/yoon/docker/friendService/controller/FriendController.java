@@ -5,8 +5,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import yoon.docker.friendService.dto.request.FriendDto;
+import yoon.docker.friendService.dto.response.FriendRequestResponse;
 import yoon.docker.friendService.dto.response.FriendResponse;
+import yoon.docker.friendService.dto.response.MemberResponse;
 import yoon.docker.friendService.service.FriendService;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -18,20 +22,29 @@ public class FriendController {
 
     //친구 정보 GET /{memberIdx} -> 친구 여부 확인 후 정보 반환
     @GetMapping("/{memberIdx}")
-    public ResponseEntity<?> getFriendInfo(@PathVariable long memberIdx){
-        return null;
+    public ResponseEntity<MemberResponse> getFriendInfo(@PathVariable long memberIdx){
+
+        MemberResponse result = friendService.getInfo(memberIdx);
+
+        return new ResponseEntity<>(result, HttpStatus.OK);
     }
 
     //친구 목록 GET /list
     @GetMapping("/list")
-    public ResponseEntity<?> getFriendsList(){
-        return null;
+    public ResponseEntity<List<MemberResponse>> getFriendsList(){
+
+        List<MemberResponse> result = friendService.getFriendsList();
+
+        return new ResponseEntity<>(result, HttpStatus.OK);
     }
 
     //친구 요청 반환 GET /requests  -> Method WebSocket or Http 선택
     @GetMapping("/requests")
-    public ResponseEntity<?> getFriendRequest(){
-        return null;
+    public ResponseEntity<List<FriendRequestResponse>> getFriendRequest(){
+
+        List<FriendRequestResponse> result = friendService.getFriendRequests();
+
+        return new ResponseEntity<>(result, HttpStatus.OK);
     }
 
 
