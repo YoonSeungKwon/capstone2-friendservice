@@ -20,7 +20,9 @@ import yoon.docker.friendService.dto.response.FriendResponse;
 import yoon.docker.friendService.dto.response.MemberResponse;
 import yoon.docker.friendService.entity.Friend;
 import yoon.docker.friendService.entity.Members;
+import yoon.docker.friendService.enums.ErrorCode;
 import yoon.docker.friendService.exception.FriendException;
+import yoon.docker.friendService.exception.InternalException;
 import yoon.docker.friendService.exception.UnauthorizedException;
 import yoon.docker.friendService.repository.FriendRepository;
 import yoon.docker.friendService.repository.MemberRepository;
@@ -49,7 +51,7 @@ public class FriendService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || authentication instanceof AnonymousAuthenticationToken)
-            throw new UnauthorizedException(null, null); //로그인 되지 않았거나 만료됨
+            throw new UnauthorizedException(ErrorCode.UNAUTHORIZED_ACCESS.getMessage(), ErrorCode.UNAUTHORIZED_ACCESS.getStatus()); //로그인 되지 않았거나 만료됨
 
         Members currentMember = (Members) authentication.getPrincipal();
         Friend friend = friendRepository.findFriendsByFromUserAndToUser(currentMember, memberIdx);
@@ -60,27 +62,27 @@ public class FriendService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || authentication instanceof AnonymousAuthenticationToken)
-            throw new UnauthorizedException(null, null); //로그인 되지 않았거나 만료됨
+            throw new UnauthorizedException(ErrorCode.UNAUTHORIZED_ACCESS.getMessage(), ErrorCode.UNAUTHORIZED_ACCESS.getStatus()); //로그인 되지 않았거나 만료됨
 
         Members currentMember = (Members) authentication.getPrincipal();
         Friend friend = friendRepository.findFriendsByFromUserAndToUser(currentMember, idx);
         if(friend == null)
-            throw new FriendException(null, null); //친구가 아님
+            throw new FriendException(ErrorCode.NOT_A_FRIEND.getMessage(), ErrorCode.NOT_A_FRIEND.getStatus()); //친구가 아님
         if(!friend.isFriend())
-            throw new FriendException(null, null); //친구 요청이 아직 수락되지 않음
+            throw new FriendException(ErrorCode.FRIEND_REQUEST_NOT_ACCEPTED.getMessage(), ErrorCode.FRIEND_REQUEST_NOT_ACCEPTED.getStatus()); //친구 요청이 아직 수락되지 않음
 
         ResponseEntity<MemberResponse> response = restTemplate.getForEntity(memberUrl+"/api/v1/members/"+idx, MemberResponse.class);
         if(response.getStatusCode() == HttpStatus.OK)
             return response.getBody();
         else
-            throw new RuntimeException(); // 서버 에러
+            throw new InternalException(ErrorCode.INTERNAL_SERVER_ERROR.getMessage(), ErrorCode.INTERNAL_SERVER_ERROR.getStatus());  // 서버 에러
     }
 
     public List<MemberResponse> getFriendsList(){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || authentication instanceof AnonymousAuthenticationToken)
-            throw new UnauthorizedException(null, null); //로그인 되지 않았거나 만료됨
+            throw new UnauthorizedException(ErrorCode.UNAUTHORIZED_ACCESS.getMessage(), ErrorCode.UNAUTHORIZED_ACCESS.getStatus()); //로그인 되지 않았거나 만료됨
 
         Members currentMember = (Members) authentication.getPrincipal();
 
@@ -99,14 +101,14 @@ public class FriendService {
         if(response.getStatusCode() == HttpStatus.OK)
             return response.getBody();
         else
-            throw new RuntimeException(null, null); // 서버 에러
+            throw new InternalException(ErrorCode.INTERNAL_SERVER_ERROR.getMessage(), ErrorCode.INTERNAL_SERVER_ERROR.getStatus()); // 서버 에러
     }
 
     public List<FriendRequestResponse> getFriendRequests(){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || authentication instanceof AnonymousAuthenticationToken)
-            throw new UnauthorizedException(null, null); //로그인 되지 않았거나 만료됨
+            throw new UnauthorizedException(ErrorCode.UNAUTHORIZED_ACCESS.getMessage(), ErrorCode.UNAUTHORIZED_ACCESS.getStatus()); //로그인 되지 않았거나 만료됨
 
         Members currentMember = (Members) authentication.getPrincipal();
 
@@ -127,16 +129,16 @@ public class FriendService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || authentication instanceof AnonymousAuthenticationToken)
-            throw new UnauthorizedException(null, null); //로그인 되지 않았거나 만료됨
+            throw new UnauthorizedException(ErrorCode.UNAUTHORIZED_ACCESS.getMessage(), ErrorCode.UNAUTHORIZED_ACCESS.getStatus()); //로그인 되지 않았거나 만료됨
 
         Members currentMember = (Members) authentication.getPrincipal();
         long toUser = dto.getToUser();
 
         if(!memberRepository.existsMembersByMemberIdx(toUser))
-            throw new FriendException(null,null); //해당 유저가 없음
+            throw new FriendException(ErrorCode.FRIEND_NOT_FOUND.getMessage(),ErrorCode.FRIEND_NOT_FOUND.getStatus()); //해당 유저가 없음
         if(friendRepository.existsByFromUserAndToUser(currentMember, toUser) ||
                 friendRepository.existsByFromUserAndToUser(memberRepository.findMembersByMemberIdx(toUser), currentMember.getMemberIdx()))
-            throw new FriendException(null, null);//이미 친구이거나 요청을 보냄
+            throw new FriendException(ErrorCode.FRIEND_REQUEST_ALREADY_SENT.getMessage(), ErrorCode.FRIEND_REQUEST_ALREADY_SENT.getStatus());//이미 친구이거나 요청을 보냄
 
         Friend friend = Friend.builder()
                 .toUser(toUser)
@@ -173,7 +175,7 @@ public class FriendService {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || authentication instanceof AnonymousAuthenticationToken)
-            throw new UnauthorizedException(null, null); //로그인 되지 않았거나 만료됨
+            throw new UnauthorizedException(ErrorCode.UNAUTHORIZED_ACCESS.getMessage(), ErrorCode.UNAUTHORIZED_ACCESS.getStatus()); //로그인 되지 않았거나 만료됨
 
         Members currentMember = (Members) authentication.getPrincipal();
         Members to = memberRepository.findMembersByMemberIdx(memberIdx);
