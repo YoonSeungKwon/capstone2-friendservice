@@ -10,7 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -36,6 +35,8 @@ public class FriendService {
 
     @Value("${SVC_MEMBER}")
     private String memberUrl;
+    @Value("${PORT_MEMBER}")
+    private String memberPort;
 
     private final RestTemplate restTemplate;
 
@@ -47,14 +48,18 @@ public class FriendService {
         return new FriendResponse(friend.getFromUser().getMemberIdx(), friend.getToUser(), friend.isFriend(), friend.getCreatedAt());
     }
 
-    public boolean isFriend(long memberIdx){
+    public boolean isFriend(FriendDto dto){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || authentication instanceof AnonymousAuthenticationToken)
             throw new UnauthorizedException(ErrorCode.UNAUTHORIZED_ACCESS.getMessage(), ErrorCode.UNAUTHORIZED_ACCESS.getStatus()); //로그인 되지 않았거나 만료됨
 
         Members currentMember = (Members) authentication.getPrincipal();
-        Friend friend = friendRepository.findFriendsByFromUserAndToUser(currentMember, memberIdx);
+
+        if(dto.getToUser() == currentMember.getMemberIdx())
+            throw new FriendException(ErrorCode.SELF_REQUEST.getMessage(), ErrorCode.SELF_REQUEST.getStatus());//본인에게 요청
+
+        Friend friend = friendRepository.findFriendsByFromUserAndToUser(currentMember, dto.getToUser());
         return friend != null && friend.isFriend();
     }
 
@@ -65,13 +70,17 @@ public class FriendService {
             throw new UnauthorizedException(ErrorCode.UNAUTHORIZED_ACCESS.getMessage(), ErrorCode.UNAUTHORIZED_ACCESS.getStatus()); //로그인 되지 않았거나 만료됨
 
         Members currentMember = (Members) authentication.getPrincipal();
+
+        if(idx == currentMember.getMemberIdx())
+            throw new FriendException(ErrorCode.SELF_REQUEST.getMessage(), ErrorCode.SELF_REQUEST.getStatus()); // 본인에게 요청
+
         Friend friend = friendRepository.findFriendsByFromUserAndToUser(currentMember, idx);
         if(friend == null)
             throw new FriendException(ErrorCode.NOT_A_FRIEND.getMessage(), ErrorCode.NOT_A_FRIEND.getStatus()); //친구가 아님
         if(!friend.isFriend())
             throw new FriendException(ErrorCode.FRIEND_REQUEST_NOT_ACCEPTED.getMessage(), ErrorCode.FRIEND_REQUEST_NOT_ACCEPTED.getStatus()); //친구 요청이 아직 수락되지 않음
 
-        ResponseEntity<MemberResponse> response = restTemplate.getForEntity(memberUrl+"/api/v1/members/"+idx, MemberResponse.class);
+        ResponseEntity<MemberResponse> response = restTemplate.getForEntity("http://"+memberUrl+":"+memberPort+"/api/v1/members/"+idx, MemberResponse.class);
         if(response.getStatusCode() == HttpStatus.OK)
             return response.getBody();
         else
@@ -93,7 +102,7 @@ public class FriendService {
         }
         HttpEntity<List<Long>> requestBody = new HttpEntity<>(idxList);
         ResponseEntity<List<MemberResponse>> response = restTemplate.exchange(
-                memberUrl+"/api/v1/members/lists",
+                "http://"+memberUrl+":"+memberPort+"/api/v1/members/lists",
                 HttpMethod.POST,
                 requestBody,
                 new ParameterizedTypeReference<List<MemberResponse>>() {});
@@ -134,6 +143,8 @@ public class FriendService {
         Members currentMember = (Members) authentication.getPrincipal();
         long toUser = dto.getToUser();
 
+        if(toUser == currentMember.getMemberIdx())
+            throw new FriendException(ErrorCode.SELF_REQUEST.getMessage(), ErrorCode.SELF_REQUEST.getStatus()); // 본인에게 요청
         if(!memberRepository.existsMembersByMemberIdx(toUser))
             throw new FriendException(ErrorCode.FRIEND_NOT_FOUND.getMessage(),ErrorCode.FRIEND_NOT_FOUND.getStatus()); //해당 유저가 없음
         if(friendRepository.existsByFromUserAndToUser(currentMember, toUser) ||
@@ -141,6 +152,7 @@ public class FriendService {
             throw new FriendException(ErrorCode.FRIEND_REQUEST_ALREADY_SENT.getMessage(), ErrorCode.FRIEND_REQUEST_ALREADY_SENT.getStatus());//이미 친구이거나 요청을 보냄
 
         Friend friend = Friend.builder()
+                .fromUser(currentMember)
                 .toUser(toUser)
                 .build();
 
@@ -178,6 +190,10 @@ public class FriendService {
             throw new UnauthorizedException(ErrorCode.UNAUTHORIZED_ACCESS.getMessage(), ErrorCode.UNAUTHORIZED_ACCESS.getStatus()); //로그인 되지 않았거나 만료됨
 
         Members currentMember = (Members) authentication.getPrincipal();
+
+        if(memberIdx == currentMember.getMemberIdx())
+            throw new FriendException(ErrorCode.SELF_REQUEST.getMessage(), ErrorCode.SELF_REQUEST.getStatus()); // 본인에게 요청
+
         Members to = memberRepository.findMembersByMemberIdx(memberIdx);
 
         Friend friend1 = friendRepository.findFriendsByFromUserAndToUser(currentMember, to.getMemberIdx());

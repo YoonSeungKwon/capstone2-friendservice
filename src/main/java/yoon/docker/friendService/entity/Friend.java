@@ -22,7 +22,7 @@ public class Friend {
     private long friendIdx;
 
     @ManyToOne
-    @JoinColumn(name = "from_user", referencedColumnName = "member_idx")
+    @JoinColumn(name = "from_user", referencedColumnName = "memberIdx")
     private Members fromUser;
 
     private long toUser;

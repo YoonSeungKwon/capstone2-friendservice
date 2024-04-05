@@ -12,11 +12,13 @@ public enum ErrorCode {
 
     ALREADY_FRIENDS("이미 친구입니다.", HttpStatus.BAD_REQUEST),
 
-    FRIEND_NOT_FOUND("친구를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
-
     FRIEND_REQUEST_NOT_ACCEPTED("친구 요청이 수락되지 않았습니다.", HttpStatus.BAD_REQUEST),
 
     FRIEND_REQUEST_ALREADY_SENT("이미 친구 요청을 보냈습니다.", HttpStatus.BAD_REQUEST),
+
+    FRIEND_NOT_FOUND("친구를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+
+    SELF_REQUEST("자기 자신에게 요청할 수 없습니다.", HttpStatus.FORBIDDEN),
 
     //인증 에러
 
