@@ -21,7 +21,7 @@ public class Friend {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long friendIdx;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "from_user", referencedColumnName = "memberIdx")
     private Members fromUser;
 
