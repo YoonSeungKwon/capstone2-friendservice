@@ -165,7 +165,18 @@ public class FriendService {
 
     @Transactional
     public FriendResponse accept(long friendIdx){
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || authentication instanceof AnonymousAuthenticationToken)
+            throw new UnauthorizedException(ExceptionCode.UNAUTHORIZED_ACCESS.getMessage(), ExceptionCode.UNAUTHORIZED_ACCESS.getStatus()); //로그인 되지 않았거나 만료됨
+
+        Members currentMember = (Members) authentication.getPrincipal();
         Friend friend1 = friendRepository.findFriendsByFriendIdx(friendIdx);
+
+        if(friend1.getToUser() != currentMember.getMemberIdx()) {     //toUser가 아님
+            throw new FriendException(ExceptionCode.UNAUTHORIZED_ACCESS.getMessage(), ExceptionCode.UNAUTHORIZED_ACCESS.getStatus());
+        }
+
         Friend friend2 = Friend.builder()
                 .fromUser(memberRepository.findMembersByMemberIdx(friend1.getToUser()))
                 .toUser(friend1.getFromUser().getMemberIdx())
@@ -182,7 +193,18 @@ public class FriendService {
 
     @Transactional
     public void decline(long friendIdx){
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || authentication instanceof AnonymousAuthenticationToken)
+            throw new UnauthorizedException(ExceptionCode.UNAUTHORIZED_ACCESS.getMessage(), ExceptionCode.UNAUTHORIZED_ACCESS.getStatus()); //로그인 되지 않았거나 만료됨
+
+        Members currentMember = (Members) authentication.getPrincipal();
         Friend friend = friendRepository.findFriendsByFriendIdx(friendIdx);
+
+        if(friend.getToUser() != currentMember.getMemberIdx()) {     //toUser가 아님
+            throw new FriendException(ExceptionCode.UNAUTHORIZED_ACCESS.getMessage(), ExceptionCode.UNAUTHORIZED_ACCESS.getStatus());
+        }
+
         friendRepository.delete(friend);
     }
 
