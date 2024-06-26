@@ -17,5 +17,11 @@ public interface FriendRepository extends JpaRepository<Friend, Long> {
     Friend findFriendsByFriendIdx(long idx);
 
     List<Friend> findFriendsByToUser(long idx);
+
+    //인덱싱 fromUser
     List<Friend> findFriendsByFromUserAndIsFriend(Members members, boolean isFriend);
+
+    //인덱싱 toUser
+    List<Friend> findFriendsByToUserAndIsFriend(long toUser, boolean isFriend);
+
 }

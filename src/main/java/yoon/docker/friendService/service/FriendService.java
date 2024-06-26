@@ -2,6 +2,11 @@ package yoon.docker.friendService.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -43,6 +48,8 @@ public class FriendService {
     private final FriendRepository friendRepository;
 
     private final MemberRepository memberRepository;
+
+    private final CacheManager cacheManager;
 
     private FriendResponse toResponse(Friend friend){
         return new FriendResponse(friend.getFromUser().getMemberIdx(), friend.getToUser(), friend.isFriend(), friend.getCreatedAt());
@@ -89,8 +96,9 @@ public class FriendService {
             throw new InternalException(ExceptionCode.INTERNAL_SERVER_ERROR.getMessage(), ExceptionCode.INTERNAL_SERVER_ERROR.getStatus());  // 서버 에러
     }
 
+    @Cacheable(value = "friendList", key = "#cacheIndex")
     @Transactional(readOnly = true)
-    public List<MemberResponse> getFriendsList(){
+    public List<MemberResponse> getFriendsList(long cacheIndex){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || authentication instanceof AnonymousAuthenticationToken)
@@ -125,7 +133,7 @@ public class FriendService {
 
         Members currentMember = (Members) authentication.getPrincipal();
 
-        List<Friend> list = friendRepository.findFriendsByToUser(currentMember.getMemberIdx());
+        List<Friend> list = friendRepository.findFriendsByToUserAndIsFriend(currentMember.getMemberIdx(), false);
         List<FriendRequestResponse> result = new ArrayList<>();
 
         for(Friend f: list){
@@ -164,7 +172,7 @@ public class FriendService {
     }
 
     @Transactional
-    public FriendResponse accept(long friendIdx){
+    public FriendResponse accept(long friendIdx, long cacheIndex){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || authentication instanceof AnonymousAuthenticationToken)
@@ -175,6 +183,9 @@ public class FriendService {
 
         if(friend1.getToUser() != currentMember.getMemberIdx()) {     //toUser가 아님
             throw new FriendException(ExceptionCode.UNAUTHORIZED_ACCESS.getMessage(), ExceptionCode.UNAUTHORIZED_ACCESS.getStatus());
+        }
+        if(friend1.isFriend()){ //이미 친구
+            throw new FriendException(ExceptionCode.ALREADY_FRIENDS.getMessage(), ExceptionCode.ALREADY_FRIENDS.getStatus());
         }
 
         Friend friend2 = Friend.builder()
@@ -187,6 +198,17 @@ public class FriendService {
 
         friendRepository.save(friend1);
         friendRepository.save(friend2);
+
+        //Cache Put
+        Cache cache = cacheManager.getCache("friendList");
+        Cache.ValueWrapper valueWrapper = cache.get(cacheIndex);
+        if(valueWrapper!=null){
+            List<MemberResponse> list = (List<MemberResponse>) valueWrapper.get();
+            Members members = friend1.getFromUser();
+            list.add(new MemberResponse(members.getMemberIdx(), members.getEmail(), members.getUsername(), members.getProfile(),
+                    String.valueOf(members.getCreatedAt()), String.valueOf(members.getUpdatedAt())));
+            cache.put(cacheIndex, list);
+        }
 
         return toResponse(friend1);
     }
@@ -204,12 +226,16 @@ public class FriendService {
         if(friend.getToUser() != currentMember.getMemberIdx()) {     //toUser가 아님
             throw new FriendException(ExceptionCode.UNAUTHORIZED_ACCESS.getMessage(), ExceptionCode.UNAUTHORIZED_ACCESS.getStatus());
         }
+        if(friend.isFriend()){
+            throw new FriendException(ExceptionCode.ALREADY_FRIENDS.getMessage(), ExceptionCode.ALREADY_FRIENDS.getStatus());
+        }
 
         friendRepository.delete(friend);
     }
 
     @Transactional
-    public void delete(long memberIdx){
+    @CacheEvict(value = "friendList", key = "#cacheIndex")
+    public void delete(long memberIdx, long cacheIndex){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || authentication instanceof AnonymousAuthenticationToken)
@@ -224,6 +250,7 @@ public class FriendService {
 
         Friend friend1 = friendRepository.findFriendsByFromUserAndToUser(currentMember, to.getMemberIdx());
         Friend friend2 = friendRepository.findFriendsByFromUserAndToUser(to, currentMember.getMemberIdx());
+
 
         friendRepository.delete(friend1);
         friendRepository.delete(friend2);

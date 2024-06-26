@@ -2,11 +2,13 @@ package yoon.docker.friendService.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Getter
 @AllArgsConstructor
+@NoArgsConstructor
 public class MemberResponse {
 
     private long idx;
@@ -17,8 +19,8 @@ public class MemberResponse {
 
     private String profile;
 
-    private LocalDateTime createdAt;
+    private String createdAt;
 
-    private LocalDateTime updatedAt;
+    private String updatedAt;
 
 }

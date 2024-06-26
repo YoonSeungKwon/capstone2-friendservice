@@ -5,11 +5,17 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import yoon.docker.friendService.dto.request.FriendDto;
 import yoon.docker.friendService.dto.response.FriendRequestResponse;
 import yoon.docker.friendService.dto.response.FriendResponse;
 import yoon.docker.friendService.dto.response.MemberResponse;
+import yoon.docker.friendService.entity.Members;
+import yoon.docker.friendService.enums.ExceptionCode;
+import yoon.docker.friendService.exception.UnauthorizedException;
 import yoon.docker.friendService.service.FriendService;
 
 import java.util.List;
@@ -38,7 +44,7 @@ public class FriendController {
     @GetMapping("/list")
     public ResponseEntity<List<MemberResponse>> getFriendsList(){
 
-        List<MemberResponse> result = friendService.getFriendsList();
+        List<MemberResponse> result = friendService.getFriendsList(getUserIndex());
 
         return new ResponseEntity<>(result, HttpStatus.OK);
     }
@@ -80,7 +86,7 @@ public class FriendController {
     @PostMapping("/accept/{friendIdx}")
     public ResponseEntity<FriendResponse> acceptFriend(@PathVariable long friendIdx){
 
-        FriendResponse result = friendService.accept(friendIdx);
+        FriendResponse result = friendService.accept(friendIdx, getUserIndex());
 
         return new ResponseEntity<>(result, HttpStatus.OK);
     }
@@ -102,9 +108,20 @@ public class FriendController {
     @DeleteMapping("/{memberIdx}")
     public ResponseEntity<?> deleteFriend(@PathVariable long memberIdx){
 
-        friendService.delete(memberIdx);
+        friendService.delete(memberIdx, getUserIndex());
 
         return new ResponseEntity<>(null, HttpStatus.NO_CONTENT);
+    }
+
+    private long getUserIndex(){
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || authentication instanceof AnonymousAuthenticationToken)
+            throw new UnauthorizedException(ExceptionCode.UNAUTHORIZED_ACCESS.getMessage(), ExceptionCode.UNAUTHORIZED_ACCESS.getStatus());
+
+        Members members = (Members) authentication.getPrincipal();
+
+        return members.getMemberIdx();
     }
 
 }

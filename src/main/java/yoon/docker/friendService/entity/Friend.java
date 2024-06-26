@@ -22,12 +22,12 @@ public class Friend {
     private long friendIdx;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "from_user", referencedColumnName = "memberIdx")
+    @JoinColumn(name = "from_user")
     private Members fromUser;
 
     private long toUser;
 
-    @ColumnDefault("false")
+    @ColumnDefault("0")
     private boolean isFriend;
 
     @CreationTimestamp
